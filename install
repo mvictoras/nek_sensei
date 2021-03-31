@@ -1,0 +1,15 @@
+#!/bin/bash
+set -e
+
+if [ "$1" == "clean" ]; then
+  rm -rf build include lib 2>/dev/null 
+  exit 0
+fi
+
+if [ ! -d "build" ]; then
+  mkdir build
+fi
+
+cd build
+cmake -DSENSEI_DIR=$1/lib/cmake/ ..
+make install

@@ -1,0 +1,17 @@
+<!-- Example Configuratable Analysis file for SENSEI. Should be renamed to casename.xml -->
+<sensei>
+  <analysis type="histogram" mesh="mesh" array="pressure" association="point" bins="10" enabled="0" />
+  <analysis type="libsim" plots="Pseudocolor" plotvars="pressure"
+    visitdir="/soft/visualization/visit"
+    image-filename="ls_%ts" image-width="800" image-height="800" image-formate="png"
+    enabled="1" />
+  <analysis type="catalyst" pipeline="slice" array="pressure" association="point"
+    image-filename="cat_%ts.png" image-width="800" image-height="800"
+    slice-normal="0,0,1" color-range="0.0001,1.5" color-log="1"
+    enabled="0" />
+  <analysis type="PosthocIO" mode="visit" output_dir="post/" enabled="0">
+    <mesh name="mesh">
+      <point_arrays>pressure</point_arrays>
+    </mesh>
+  </analysis>
+</sensei>
