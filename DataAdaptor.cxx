@@ -303,7 +303,7 @@ namespace nek5000{
     metadata->ArrayCentering = {vtkDataObject::CELL, vtkDataObject::CELL};
     metadata->ArrayComponents = {1, 3};
     metadata->ArrayType = {VTK_DOUBLE, VTK_DOUBLE};
-    metadata->StaticMesh = 1;
+    metadata->StaticMesh = 0;
 
     return 0;
   }
