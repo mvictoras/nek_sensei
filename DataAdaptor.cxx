@@ -1,5 +1,7 @@
 #include "DataAdaptor.h"
 #include "MeshMetadata.h"
+#include "MPIUtils.h"
+#include "VTKUtils.h"
 #include "Error.h"
 
 #include <vtkObjectFactory.h>
@@ -163,51 +165,6 @@ namespace nek5000{
 
   //-----------------------------------------------------------------------------
   void DataAdaptor::Finalize(){
-    int nRanks = 1;
-    int rank = 0;
-
-    MPI_Comm_rank(this->GetCommunicator(), &rank);
-    MPI_Comm_size(this->GetCommunicator(), &nRanks);
-
-    if(rank == 0) {
-      std::string pvdFileName = "mesh.pvd";
-      std::ofstream pvdFile(pvdFileName);
-
-      if (!pvdFile)
-      {
-        SENSEI_ERROR("Failed to open " << pvdFileName << " for writing")
-      }
-
-      pvdFile << "<?xml version=\"1.0\"?>" << endl
-        << "<VTKFile type=\"Collection\" version=\"0.1\""
-           " byte_order=\"LittleEndian\" compressor=\"\">" << endl
-        << "<Collection>" << endl;
-
-      for (long i = 0; i < 2; ++i)
-        {
-        for(long k = 0; k < nRanks; ++k) {
-          for (long j = 0; j < meshes[i].steps; ++j)
-            {
-              std::ostringstream oss;
-              oss << "mesh_"
-                << std::setw(6) << std::setfill('0') << k << "_"
-                << std::setw(6) << std::setfill('0') << j << ".vtu";
-              std::string fileName = oss.str();
-
-            pvdFile << "<DataSet timestep=\"" << j
-              << "\" group=\"\" part=\"\" file=\"" << fileName
-              << "\"/>" << endl;
-            }
-          }
-        }
-
-      pvdFile << "</Collection>" << endl
-        << "</VTKFile>" << endl;
-
-
-
-    }
-
     meshes[0].mesh_x = NULL;
     meshes[0].mesh_y = NULL;
     meshes[0].mesh_z = NULL;
@@ -222,6 +179,7 @@ namespace nek5000{
   void DataAdaptor::AddArray(int index, const std::string& name, vtkAbstractArray* data){
     // ensure that the first mesh is used when meshes are deduplicated
     arrays[index%meshLen][name] = data;
+
   }
 
   //-----------------------------------------------------------------------------
@@ -295,8 +253,25 @@ namespace nek5000{
     }else if(meshLen == 2){
       metadata->MeshName = (id==0? "vmesh": "pmesh");
     }
-    
-    metadata->MeshType = VTK_UNSTRUCTURED_GRID;
+  
+    int x_len = meshes[id].x_dim - 1;
+    int y_len = meshes[id].y_dim - 1;
+    int z_len = meshes[id].z_dim - 1;
+    int numCells = 0;
+
+    if(meshes[id].z_dim == 1) {
+      numCells = x_len * y_len * meshes[id].elems;
+    } else {
+      numCells = x_len * y_len * z_len * meshes[id].elems;
+    }
+
+    int arrayLen = meshes[id].x_dim * meshes[id].y_dim * meshes[id].z_dim * meshes[id].elems;
+
+    //vtkDataSet *ds = ;
+    /*
+    metadata->MeshType = VTK_MULTIBLOCK_DATA_SET;
+    metadata->BlockType = VTK_UNSTRUCTURED_GRID;
+    metadata->NumBlocks = nRanks;
     metadata->CoordinateType = VTK_DOUBLE;
     metadata->NumArrays = 2;
     metadata->ArrayName = {"pressure", "velocity"};
@@ -304,7 +279,93 @@ namespace nek5000{
     metadata->ArrayComponents = {1, 3};
     metadata->ArrayType = {VTK_DOUBLE, VTK_DOUBLE};
     metadata->StaticMesh = 0;
+*/
+    /*
+    if (meshes[id].mesh) {
+    
+      if (sensei::VTKUtils::GetMetadata(this->GetCommunicator(), meshes[id].mesh, metadata)) {
+        SENSEI_ERROR("Failed to get metadata for composite mesh \""
+          << metadata->MeshName << "\"")
+        return -1;
+      }
+      return 0;
+    }
+*/
+    metadata->MeshType = VTK_UNSTRUCTURED_GRID;
+    metadata->BlockType = VTK_UNSTRUCTURED_GRID;
+    metadata->NumBlocks = nRanks;
+    //metadata->BlockNumCells = {1, 1};
+    //metadata->BlockOwner.reserve(metadata->NumBlocks);
+    metadata->CoordinateType = VTK_DOUBLE;
+    metadata->NumArrays = 2;
+    metadata->ArrayName = {"pressure", "velocity"};
+    metadata->ArrayCentering = {vtkDataObject::CELL, vtkDataObject::CELL};
+    metadata->ArrayComponents = {1, 3};
+    metadata->ArrayType = {VTK_DOUBLE, VTK_DOUBLE};
+    metadata->NumGhostCells = 0;
+    metadata->NumGhostNodes = 0;
+    metadata->StaticMesh = 0;
+    metadata->NumBlocksLocal = {1};
+    
+    //if (metadata->Flags.BlockSizeSet()) {
+      //for (int i=0; i<nRanks; ++i) {
+        metadata->BlockNumCells.push_back(numCells);
+        metadata->BlockNumPoints.push_back(arrayLen * 3);
+        metadata->BlockCellArraySize.push_back(arrayLen);
+      //}
+    //}
 
+    if (metadata->Flags.BlockDecompSet()) {
+      //auto it = this->Internals->BlockExtents.begin();
+      //auto end = this->Internals->BlockExtents.end();
+      //for (; it != end; ++it) {a
+      //for(int i=0; i<nRanks; ++i) {
+        metadata->BlockOwner.push_back(rank);
+        metadata->BlockIds.push_back(rank);
+      //}
+    }
+  
+  
+  
+  
+  
+  //std::array<double,6> Bounds;       // global bounding box (all, optional)
+  
+  //long NumPoints;                    // total number of points in all blocks (all, optional)
+  //long NumCells;                     // total number of cells in all blocks (all, optional)
+  //long CellArraySize;                // total cell array size in all blocks (all, optional)
+  
+  
+  //std::vector<std::array<double,2>> ArrayRange; // global min,max of each array (all, optional)
+
+  //std::vector<int> BlockOwner;             // rank where each block resides (all, optional)
+  //std::vector<int> BlockIds;               // global id of each block (all, optional)
+
+                                           // note: for AMR BlockNumPoints and BlockNumCells are always global
+  //std::vector<long> BlockNumPoints;        // number of points for each block (all, optional)
+  //std::vector<long> BlockNumCells;         // number of cells for each block (all, optional)
+  //std::vector<long> BlockCellArraySize;    // cell array size for each block (unstructured, optional)
+
+                                                 // note: for AMR BlockExtents and BlockBounds are always global
+  //std::vector<std::array<int,6>> BlockExtents;   // index space extent of each block [i0,i1, j0,j1, k0,k1] (Cartesian, AMR, optional)
+  //std::vector<std::array<double,6>> BlockBounds; // bounds of each block [x0,x1, y0,y1, z0,z1] (all, optional)
+
+                                                                  // min max of each array on each block.
+  //std::vector<std::vector<std::array<double,2>>> BlockArrayRange; // indexed by block then array. (all, optional)
+
+  //std::vector<std::array<int,3>> RefRatio; // refinement ratio in i,j, and k directions for each level (AMR)
+  //std::vector<int> BlocksPerLevel;         // number of blocks in each level (AMR)
+  //std::vector<int> BlockLevel;             // AMR level of each block (AMR)
+  //std::array<int,3> PeriodicBoundary;      // flag indicating presence of a periodic boundary in the i,j,k direction (all)
+
+
+  //sensei::MeshMetadataFlags Flags;  // flags indicate which optional fields are needed
+                                    // some feilds are optional because they are costly
+                                    // to generate and not universally used on the analysis
+                                    // side.
+
+    //sensei::MPIUtils::GlobalBounds(this->GetCommunicator(), metadata->BlockBounds, metadata->Bounds);
+    //SENSEI_ERROR("Unsupoorted data object type " << dobj->GetClassName())
     return 0;
   }
 
@@ -318,6 +379,7 @@ namespace nek5000{
     mesh = newUnstructuredBlock(meshes[meshIndex].x_dim, meshes[meshIndex].y_dim, meshes[meshIndex].z_dim, meshes[meshIndex].elems, 
           meshes[meshIndex].mesh_x, meshes[meshIndex].mesh_y, meshes[meshIndex].mesh_z, structureOnly);
 
+    //meshes[meshIndex].mesh = dynamic_cast<vtkDataSet*>(mesh); 
     meshes[meshIndex].steps++;
 
     return 0;
@@ -340,6 +402,7 @@ namespace nek5000{
       // add vtkDoubleArray to mesh point data
       vtkUnstructuredGrid* grid = vtkUnstructuredGrid::SafeDownCast(mesh);
       grid->GetPointData()->AddArray(iter->second);
+    } else {
     }
 
     return 0;
