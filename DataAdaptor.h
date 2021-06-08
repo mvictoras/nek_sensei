@@ -10,13 +10,17 @@
 #include <map>
 #include <string>
 
+#include <sdiy/master.hpp>
+
 namespace nek5000{
 
 struct NekMesh{
   double *mesh_x, *mesh_y, *mesh_z;
   int length;
   int meshLen, x_dim, y_dim, z_dim, elems;
+  vtkDataSet *mesh;
   int steps = 0;
+  sdiy::DiscreteBounds DomainExtent;
 };
 
 class DataAdaptor : public sensei::DataAdaptor {
