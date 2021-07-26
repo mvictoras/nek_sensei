@@ -2,39 +2,39 @@
 #define NEK_DATAADAPTOR_H
 
 #include <DataAdaptor.h>
-#include <senseiConfig.h>
 
-#include <vtkSmartPointer.h>
-#include <vtkUnstructuredGrid.h>
+namespace nek_sensei
+{
 
-#include <map>
-#include <string>
-
-#include <sdiy/master.hpp>
-
-namespace nek5000{
-
-struct NekMesh{
-  double *mesh_x, *mesh_y, *mesh_z;
-  int length;
-  int meshLen, x_dim, y_dim, z_dim, elems;
-  vtkDataSet *mesh;
-  int steps = 0;
-  sdiy::DiscreteBounds DomainExtent;
-};
-
-class DataAdaptor : public sensei::DataAdaptor {
+class DataAdaptor : public sensei::DataAdaptor 
+{
 public:
   static DataAdaptor* New();
   senseiTypeMacro(DataAdaptor, sensei::DataAdaptor);
 
-  /// Initialize a mesh
-  void InitMesh(int index, int x_dim, int y_dim, int z_dim, int elems,
-      double* mesh_x, double* mesh_y, double* mesh_z);
+  // @brief Initialize the data adaptor.
+  ///
+  /// This initializes the data adaptor. This must be called once per simulation run.
+  /// @param nblocks is the total number of blocks in the simulation run.
+  void Initialize(int index, int x_dim, int y_dim, int z_dim, int elems,
+      double* mesh_x, double* mesh_y, double* mesh_z,
+      double* x_min, double* x_max, double* y_min, double* y_max, double* z_min, double* z_max,
+      double* vel_x, double* vel_y, double* vel_z, double* pressure, int vel_size);
 
-  /// Set the pointers to simulation memory.
-  void AddArray(int index, const std::string& name, vtkAbstractArray* data);
-  void AddArray(int index, const std::string& name, double* data);
+  /// Set the extents for local blocks.
+  void SetBlockExtent(int xmin, int xmax, int ymin,
+      int ymax, int zmin, int zmax);
+	
+	void SetDomainExtent(int xmin, int xmax, int ymin,
+   int ymax, int zmin, int zmax);
+
+  /// Set the bounds for local blocks.
+  void SetBlockBounds(double xmin, double xmax, double ymin,
+      double ymax, double zmin, double zmax);
+	
+	void SetDomainBounds(double xmin, double xmax, double ymin,
+   double ymax, double zmin, double zmax);
+
 
   /// Finalize the data adaptor.
   void Finalize();
@@ -53,22 +53,15 @@ public:
   int ReleaseData() override;
 
 protected:
-  DataAdaptor(): meshLen(0){}
-  ~DataAdaptor(){}
-
-  int ValidateMeshName(const std::string &meshName);
-  int ValidateAssociation(int association);
-  int GetMeshIndex(const std::string &meshName);
-
-  using ArraysType = std::map<std::string, vtkAbstractArray*>;
-  ArraysType arrays[2];
-
-  NekMesh meshes[2];
-  int meshLen;
+  DataAdaptor();
+  ~DataAdaptor();
 
 private:
   DataAdaptor(const DataAdaptor&) = delete;
   void operator=(const DataAdaptor&) = delete;
+
+  struct InternalsType;
+  InternalsType *Internals;
 };
 
 }
