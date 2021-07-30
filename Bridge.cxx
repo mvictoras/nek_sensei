@@ -22,7 +22,7 @@ void sensei_bridge_initialize(MPI_Comm* comm, char* casename, int* elems,
       double* x_min, double* x_max, double* y_min, double* y_max, double* z_min, double* z_max)
 {
   sensei::Profiler::Initialize();
-  sensei::Profiler::StartEvent("sensei_bridge::initialize");
+  sensei::Profiler::StartEvent("nek::sensei_bridge::initialize");
   int arrayLen = (*vx_dim) * (*vy_dim) * (*vz_dim) * (*elems);
   BridgeInternals::GlobalDataAdaptor = vtkSmartPointer<nek_sensei::DataAdaptor>::New();
   BridgeInternals::GlobalDataAdaptor->SetCommunicator(*comm);
@@ -56,27 +56,27 @@ void sensei_bridge_initialize(MPI_Comm* comm, char* casename, int* elems,
   BridgeInternals::GlobalAnalysisAdaptor->SetCommunicator(*comm);
   std::string caseStr = casename;
   BridgeInternals::GlobalAnalysisAdaptor->Initialize(caseStr + ".xml");
-  sensei::Profiler::EndEvent("sensei_bridge::initialize");
+  sensei::Profiler::EndEvent("nek::sensei_bridge::initialize");
 }
 
 //-----------------------------------------------------------------------------
 void sensei_bridge_update(int* tstep, double* time)
 {
-  sensei::Profiler::StartEvent("sensei_bridge::update");
+  sensei::Profiler::StartEvent("nek::sensei_bridge::update");
   BridgeInternals::GlobalDataAdaptor->SetDataTime(*time);
   BridgeInternals::GlobalDataAdaptor->SetDataTimeStep(*tstep);
   BridgeInternals::GlobalAnalysisAdaptor->Execute(BridgeInternals::GlobalDataAdaptor);
   BridgeInternals::GlobalDataAdaptor->ReleaseData();
-  sensei::Profiler::EndEvent("sensei_bridge::update");
+  sensei::Profiler::EndEvent("nek::sensei_bridge::update");
 }
 
 //-----------------------------------------------------------------------------
 void sensei_bridge_finalize()
 {
-  sensei::Profiler::StartEvent("sensei_bridge::finalize");
+  sensei::Profiler::StartEvent("nek::sensei_bridge::finalize");
   BridgeInternals::GlobalAnalysisAdaptor->Finalize();
   BridgeInternals::GlobalDataAdaptor = nullptr;
   BridgeInternals::GlobalAnalysisAdaptor = nullptr;
-  sensei::Profiler::EndEvent("sensei_bridge::finalize");
+  sensei::Profiler::EndEvent("nek::sensei_bridge::finalize");
   sensei::Profiler::Finalize();
 }

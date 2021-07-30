@@ -84,15 +84,16 @@ vtkUnstructuredGrid *newUnstructuredBlock(Block *block, bool structureOnly)
   if(!structureOnly) 
   {
     int arrayLen = block->dim[0] * block->dim[1] * block->dim[2] * block->size;
+    /*
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
     points->SetNumberOfPoints(arrayLen);
     double* mesh_x = block->mesh[0];
     double* mesh_y = block->mesh[1];
     double* mesh_z = block->mesh[2];
-    //for(int i=0; i<arrayLen; ++i)
-    //  points->SetPoint(i, mesh_x[i], mesh_y[i], mesh_z[i]);
-
-    sensei::Profiler::StartEvent("DataAdaptor::newUnstructuredBlock::vtkSOAArrayTemplate");
+    for(int i=0; i<arrayLen; ++i)
+      points->SetPoint(i, mesh_x[i], mesh_y[i], mesh_z[i]);
+    */
+    sensei::Profiler::StartEvent("nek::DataAdaptor::newUnstructuredBlock::vtkSOAArrayTemplate");
 
     vtkSOADataArrayTemplate<double> *pointsData = vtkSOADataArrayTemplate<double>::New();
     pointsData->SetNumberOfComponents(3);
@@ -104,7 +105,7 @@ vtkUnstructuredGrid *newUnstructuredBlock(Block *block, bool structureOnly)
     points->SetDataTypeToDouble();
     points->SetNumberOfPoints(arrayLen * 3);
     points->SetData(pointsData);
-    sensei::Profiler::EndEvent("DataAdaptor::newUnstructuredBlock::vtkSOAArrayTemplate");
+    sensei::Profiler::EndEvent("nek::DataAdaptor::newUnstructuredBlock::vtkSOAArrayTemplate");
 
     ug->SetPoints(points);
     //pointsData->Delete();
@@ -401,7 +402,7 @@ int DataAdaptor::GetNumberOfMeshes(unsigned int &numMeshes){
 int DataAdaptor::GetMeshMetadata(unsigned int id, sensei::MeshMetadataPtr &metadata) 
 {
 
-  sensei::Profiler::StartEvent("DataAdaptor::GetMeshMetadata");
+  sensei::Profiler::StartEvent("nek::DataAdaptor::GetMeshMetadata");
 	if (id > 2)
 	{
 		SENSEI_ERROR("invalid mesh id " << id)
@@ -486,7 +487,7 @@ int DataAdaptor::GetMeshMetadata(unsigned int id, sensei::MeshMetadataPtr &metad
 		metadata->ArrayRange.push_back(gpRange); 
 		metadata->ArrayRange.push_back(gvRange); 
 	}
-	sensei::Profiler::EndEvent("DataAdaptor::GetMeshMetadata");
+	sensei::Profiler::EndEvent("nek::DataAdaptor::GetMeshMetadata");
   return 0;
 }
 
@@ -494,7 +495,7 @@ int DataAdaptor::GetMeshMetadata(unsigned int id, sensei::MeshMetadataPtr &metad
 int DataAdaptor::GetMesh(const std::string &meshName, bool structureOnly,
 	vtkDataObject *&mesh)
 {
-  sensei::Profiler::StartEvent("DataAdaptor::GetMesh");
+  sensei::Profiler::StartEvent("nek::DataAdaptor::GetMesh");
 
 	mesh = nullptr;
 
@@ -516,7 +517,7 @@ int DataAdaptor::GetMesh(const std::string &meshName, bool structureOnly,
   ug->Delete();
 
 	mesh = mb;
-  sensei::Profiler::EndEvent("DataAdaptor::GetMesh");
+  sensei::Profiler::EndEvent("nek::DataAdaptor::GetMesh");
   return 0;
 }
 
@@ -524,7 +525,7 @@ int DataAdaptor::GetMesh(const std::string &meshName, bool structureOnly,
 int DataAdaptor::AddArray(vtkDataObject* mesh, const std::string &meshName,
       int association, const std::string& arrayName)
 {
-  sensei::Profiler::StartEvent("DataAdaptor::AddArray");
+  sensei::Profiler::StartEvent("nek::DataAdaptor::AddArray");
 
 	vtkMultiBlockDataSet *mb = dynamic_cast<vtkMultiBlockDataSet*>(mesh);
   if (!mb)
@@ -560,7 +561,7 @@ int DataAdaptor::AddArray(vtkDataObject* mesh, const std::string &meshName,
 		dsa->AddArray(da);
 		da->Delete();
 	}
-	sensei::Profiler::EndEvent("DataAdaptor::AddArray");
+	sensei::Profiler::EndEvent("nek::DataAdaptor::AddArray");
   return 0;
 }
 
