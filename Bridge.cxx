@@ -6,6 +6,7 @@
 #include <vtkDataObject.h>
 #include <vtkDoubleArray.h>
 #include <vtkSOADataArrayTemplate.h>
+#include <Profiler.h>
 
 namespace BridgeInternals
 {
@@ -20,13 +21,15 @@ void sensei_bridge_initialize(MPI_Comm* comm, char* casename, int* elems,
       double* vel_x, double* vel_y, double* vel_z, double* pressure, double* temp, double* jacobian, int* t_dim,
       double* x_min, double* x_max, double* y_min, double* y_max, double* z_min, double* z_max)
 {
+  sensei::Profiler::Initialize();
+  sensei::Profiler::StartEvent("sensei_bridge::initialize");
   int arrayLen = (*vx_dim) * (*vy_dim) * (*vz_dim) * (*elems);
   BridgeInternals::GlobalDataAdaptor = vtkSmartPointer<nek_sensei::DataAdaptor>::New();
   BridgeInternals::GlobalDataAdaptor->SetCommunicator(*comm);
   BridgeInternals::GlobalDataAdaptor->Initialize(0,
         *vx_dim, *vy_dim, *vz_dim, *elems, vmesh_x, vmesh_y, vmesh_z, x_min, x_max, y_min, y_max, z_min, z_max,
         vel_x, vel_y, vel_z, pressure, arrayLen);
-if(*vx_dim != *px_dim){
+  if(*vx_dim != *px_dim){
     BridgeInternals::GlobalDataAdaptor->Initialize(1,
         *px_dim, *py_dim, *pz_dim, *elems, pmesh_x, pmesh_y, pmesh_z, x_min, x_max, y_min, y_max, z_min, z_max,
         vel_x, vel_y, vel_z, pressure, arrayLen);
@@ -53,22 +56,27 @@ if(*vx_dim != *px_dim){
   BridgeInternals::GlobalAnalysisAdaptor->SetCommunicator(*comm);
   std::string caseStr = casename;
   BridgeInternals::GlobalAnalysisAdaptor->Initialize(caseStr + ".xml");
+  sensei::Profiler::EndEvent("sensei_bridge::initialize");
 }
 
 //-----------------------------------------------------------------------------
 void sensei_bridge_update(int* tstep, double* time)
 {
+  sensei::Profiler::StartEvent("sensei_bridge::update");
   BridgeInternals::GlobalDataAdaptor->SetDataTime(*time);
   BridgeInternals::GlobalDataAdaptor->SetDataTimeStep(*tstep);
   BridgeInternals::GlobalAnalysisAdaptor->Execute(BridgeInternals::GlobalDataAdaptor);
   BridgeInternals::GlobalDataAdaptor->ReleaseData();
+  sensei::Profiler::EndEvent("sensei_bridge::update");
 }
 
 //-----------------------------------------------------------------------------
 void sensei_bridge_finalize()
 {
-  //BridgeInternals::GlobalDataAdaptor->Finalize();
+  sensei::Profiler::StartEvent("sensei_bridge::finalize");
   BridgeInternals::GlobalAnalysisAdaptor->Finalize();
   BridgeInternals::GlobalDataAdaptor = nullptr;
   BridgeInternals::GlobalAnalysisAdaptor = nullptr;
+  sensei::Profiler::EndEvent("sensei_bridge::finalize");
+  sensei::Profiler::Finalize();
 }

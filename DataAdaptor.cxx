@@ -20,6 +20,8 @@
 #include <sstream>
 #include <fstream>
 
+#include <Profiler.h>
+
 typedef struct BlockType {
 	int size;
 	std::array<int, 3> dim;
@@ -82,6 +84,16 @@ vtkUnstructuredGrid *newUnstructuredBlock(Block *block, bool structureOnly)
   if(!structureOnly) 
   {
     int arrayLen = block->dim[0] * block->dim[1] * block->dim[2] * block->size;
+    vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+    points->SetNumberOfPoints(arrayLen);
+    double* mesh_x = block->mesh[0];
+    double* mesh_y = block->mesh[1];
+    double* mesh_z = block->mesh[2];
+    //for(int i=0; i<arrayLen; ++i)
+    //  points->SetPoint(i, mesh_x[i], mesh_y[i], mesh_z[i]);
+
+    sensei::Profiler::StartEvent("DataAdaptor::newUnstructuredBlock::vtkSOAArrayTemplate");
+
     vtkSOADataArrayTemplate<double> *pointsData = vtkSOADataArrayTemplate<double>::New();
     pointsData->SetNumberOfComponents(3);
     pointsData->SetArray(0, block->mesh[0], arrayLen,  true, true);
@@ -92,9 +104,10 @@ vtkUnstructuredGrid *newUnstructuredBlock(Block *block, bool structureOnly)
     points->SetDataTypeToDouble();
     points->SetNumberOfPoints(arrayLen * 3);
     points->SetData(pointsData);
+    sensei::Profiler::EndEvent("DataAdaptor::newUnstructuredBlock::vtkSOAArrayTemplate");
 
     ug->SetPoints(points);
-    pointsData->Delete();
+    //pointsData->Delete();
 
     // calculate cell ids based off of Nek5000's format
     vtkSmartPointer<vtkCellArray> cells = vtkSmartPointer<vtkCellArray>::New();
@@ -388,6 +401,7 @@ int DataAdaptor::GetNumberOfMeshes(unsigned int &numMeshes){
 int DataAdaptor::GetMeshMetadata(unsigned int id, sensei::MeshMetadataPtr &metadata) 
 {
 
+  sensei::Profiler::StartEvent("DataAdaptor::GetMeshMetadata");
 	if (id > 2)
 	{
 		SENSEI_ERROR("invalid mesh id " << id)
@@ -408,7 +422,7 @@ int DataAdaptor::GetMeshMetadata(unsigned int id, sensei::MeshMetadataPtr &metad
 	int nBlocks = 1;
   metadata->MeshType = VTK_MULTIBLOCK_DATA_SET;
   metadata->BlockType = VTK_UNSTRUCTURED_GRID;
-  metadata->CoordinateType = VTK_FLOAT;
+  metadata->CoordinateType = VTK_DOUBLE;
   metadata->NumBlocks = this->Internals->NumBlocks;
   metadata->NumBlocksLocal = {nBlocks};
   metadata->NumGhostCells = this->Internals->NumGhostCells;
@@ -449,7 +463,7 @@ int DataAdaptor::GetMeshMetadata(unsigned int id, sensei::MeshMetadataPtr &metad
     long nPts = getBlockNumPoints(this->Internals->BlockData);
     metadata->BlockNumCells.push_back(nCells);
     metadata->BlockNumPoints.push_back(nPts);
-    metadata->BlockCellArraySize.push_back(5*nCells);
+    metadata->BlockCellArraySize.push_back(9*nCells);
 	}
 	  
 	if (metadata->Flags.BlockDecompSet()) {
@@ -472,13 +486,15 @@ int DataAdaptor::GetMeshMetadata(unsigned int id, sensei::MeshMetadataPtr &metad
 		metadata->ArrayRange.push_back(gpRange); 
 		metadata->ArrayRange.push_back(gvRange); 
 	}
-	return 0;
+	sensei::Profiler::EndEvent("DataAdaptor::GetMeshMetadata");
+  return 0;
 }
 
 //-----------------------------------------------------------------------------
 int DataAdaptor::GetMesh(const std::string &meshName, bool structureOnly,
 	vtkDataObject *&mesh)
 {
+  sensei::Profiler::StartEvent("DataAdaptor::GetMesh");
 
 	mesh = nullptr;
 
@@ -500,6 +516,7 @@ int DataAdaptor::GetMesh(const std::string &meshName, bool structureOnly,
   ug->Delete();
 
 	mesh = mb;
+  sensei::Profiler::EndEvent("DataAdaptor::GetMesh");
   return 0;
 }
 
@@ -507,6 +524,7 @@ int DataAdaptor::GetMesh(const std::string &meshName, bool structureOnly,
 int DataAdaptor::AddArray(vtkDataObject* mesh, const std::string &meshName,
       int association, const std::string& arrayName)
 {
+  sensei::Profiler::StartEvent("DataAdaptor::AddArray");
 
 	vtkMultiBlockDataSet *mb = dynamic_cast<vtkMultiBlockDataSet*>(mesh);
   if (!mb)
@@ -542,7 +560,8 @@ int DataAdaptor::AddArray(vtkDataObject* mesh, const std::string &meshName,
 		dsa->AddArray(da);
 		da->Delete();
 	}
-	return 0;
+	sensei::Profiler::EndEvent("DataAdaptor::AddArray");
+  return 0;
 }
 
 //-----------------------------------------------------------------------------
