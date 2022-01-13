@@ -123,7 +123,7 @@ vtkUnstructuredGrid *newUnstructuredBlock(Block *block, bool structureOnly)
       vtkIdTypeArray *nlist = vtkIdTypeArray::New();
       nlist->SetNumberOfValues(numCells * 5);
       vtkIdType *nl = nlist->GetPointer(0);
-      for(int elem=0; elem<size; ++elem)
+      for(int elem=0; elem<block->size; ++elem)
       {
         for(int y=0; y < y_len; ++y)
         {
@@ -170,7 +170,7 @@ vtkUnstructuredGrid *newUnstructuredBlock(Block *block, bool structureOnly)
       vtkIdTypeArray *nlist = vtkIdTypeArray::New();
       nlist->SetNumberOfValues(numCells * 9);
       vtkIdType *nl = nlist->GetPointer(0);
-      for(int elem=0; elem<size; ++elem)
+      for(int elem=0; elem<block->size; ++elem)
       {
         for(int z=0; z < z_len; ++z)
         {
@@ -263,6 +263,8 @@ struct DataAdaptor::InternalsType
 	sdiy::DiscreteBounds BlockExtents;                // local block extents, indexed by global block id
   sdiy::DiscreteBounds DomainBounds;                // global index space
 	sdiy::DiscreteBounds BlockBounds;                 // local block extents, indexed by global block id
+  sdiy::DiscreteBounds VelocityArrayRange;          // Range of velocity values
+  sdiy::DiscreteBounds PressureArrayRange;                 // Range of pressure values
   Block* BlockData;                                 // local data array, indexed by block id
 
   double Origin[3];                                 // lower left corner of simulation domain
@@ -290,7 +292,8 @@ DataAdaptor::~DataAdaptor()
 void DataAdaptor::Initialize(int index, int x_dim, int y_dim, int z_dim, int elems,
               double* mesh_x, double* mesh_y, double* mesh_z,
               double *x_min, double* x_max, double* y_min, double* y_max, double* z_min, double* z_max,
-              double* vel_x, double* vel_y, double* vel_z, double* pressure, int vel_size)
+              double* vel_x_min, double* vel_x_max, double* vel_y_min, double* vel_y_max, double* vel_z_min, double* vel_z_max,
+              double* pr_min, double* pr_max, double* vel_x, double* vel_y, double* vel_z, double* pressure, int vel_size)
 {
 
 	int nRanks = 1;
@@ -322,6 +325,14 @@ void DataAdaptor::Initialize(int index, int x_dim, int y_dim, int z_dim, int ele
       *x_min, *x_max,
       *y_min, *y_max,
       *z_min, *z_max);
+
+  this->SetVelocityArrayRange(
+      *vel_x_min, *vel_x_max,
+      *vel_y_min, *vel_y_max,
+      *vel_z_min, *vel_z_max
+      );
+
+  this->SetPressureArrayRange( *pr_min, *pr_max );
 
 	this->Internals->BlockData = new Block();
 	this->Internals->BlockData->size = elems;
@@ -391,6 +402,24 @@ void DataAdaptor::SetBlockBounds(double xmin, double xmax, double ymin,
   this->Internals->BlockBounds.max[2] = zmax;
 }
 
+//-----------------------------------------------------------------------------
+void DataAdaptor::SetVelocityArrayRange(double xmin, double xmax, double ymin,
+   double ymax, double zmin, double zmax)
+{
+  this->Internals->VelocityArrayRange.min[0] = xmin;
+  this->Internals->VelocityArrayRange.min[1] = ymin;
+  this->Internals->VelocityArrayRange.min[2] = zmin;
+
+  this->Internals->VelocityArrayRange.max[0] = xmax;
+  this->Internals->VelocityArrayRange.max[1] = ymax;
+  this->Internals->VelocityArrayRange.max[2] = zmax;
+}
+
+//-----------------------------------------------------------------------------
+void DataAdaptor::SetPressureArrayRange(double min, double max) {
+  this->Internals->PressureArrayRange.min[0] = min;
+  this->Internals->PressureArrayRange.max[0] = max;
+}
 
 //-----------------------------------------------------------------------------
 int DataAdaptor::GetNumberOfMeshes(unsigned int &numMeshes){
@@ -427,11 +456,11 @@ int DataAdaptor::GetMeshMetadata(unsigned int id, sensei::MeshMetadataPtr &metad
   metadata->NumBlocks = this->Internals->NumBlocks;
   metadata->NumBlocksLocal = {nBlocks};
   metadata->NumGhostCells = this->Internals->NumGhostCells;
-  metadata->NumArrays = 2;
-  metadata->ArrayName = {"pressure", "velocity"};
-  metadata->ArrayCentering = {vtkDataObject::POINT, vtkDataObject::POINT};
-  metadata->ArrayComponents = {1, 3};
-  metadata->ArrayType = {VTK_DOUBLE, VTK_DOUBLE};
+  metadata->NumArrays = 4;
+  metadata->ArrayName = {"pressure", "velocity_x", "velocity_y", "velocity_z"};
+  metadata->ArrayCentering = {vtkDataObject::POINT, vtkDataObject::POINT, vtkDataObject::POINT, vtkDataObject::POINT};
+  metadata->ArrayComponents = {1, 1, 1, 1};
+  metadata->ArrayType = {VTK_DOUBLE, VTK_DOUBLE, VTK_DOUBLE, VTK_DOUBLE};
   metadata->StaticMesh = 0;
  
   if (metadata->Flags.BlockExtentsSet()) 
@@ -478,14 +507,20 @@ int DataAdaptor::GetMeshMetadata(unsigned int id, sensei::MeshMetadataPtr &metad
 		std::array<double,2> gpRange = {std::numeric_limits<double>::max(), std::numeric_limits<double>::lowest()};
     
     unsigned long nCells = this->Internals->BlockData->vel_size;
-    std::array<double,2> vel_x_range = getArrayRange(nCells, this->Internals->BlockData->velocity_x, gvRange);
-    std::array<double,2> vel_y_range = getArrayRange(nCells, this->Internals->BlockData->velocity_y, gvRange);
-    std::array<double,2> vel_z_range = getArrayRange(nCells, this->Internals->BlockData->velocity_z, gvRange);
-    std::array<double,2> pr_range = getArrayRange(nCells, this->Internals->BlockData->pressure, gpRange);
-    std::array<double, 2> vel_range = {std::min({vel_x_range[0], vel_y_range[0], vel_z_range[0]}), std::max({vel_x_range[1], vel_y_range[1], vel_z_range[1]})};
-    metadata->BlockArrayRange.push_back({pr_range, vel_range});
-		metadata->ArrayRange.push_back(gpRange); 
-		metadata->ArrayRange.push_back(gvRange); 
+    std::array<double,2> vel_x_BlockRange = getArrayRange(nCells, this->Internals->BlockData->velocity_x, gvRange);
+    std::array<double,2> vel_y_BlockRange = getArrayRange(nCells, this->Internals->BlockData->velocity_y, gvRange);
+    std::array<double,2> vel_z_BlockRange = getArrayRange(nCells, this->Internals->BlockData->velocity_z, gvRange);
+    std::array<double,2> pr_BlockRange = getArrayRange(nCells, this->Internals->BlockData->pressure, gpRange);
+    metadata->BlockArrayRange.push_back({pr_BlockRange, vel_x_BlockRange, vel_y_BlockRange, vel_z_BlockRange});
+
+    std::array<double,2> pr_range = { this->Internals->PressureArrayRange.min[0], this->Internals->PressureArrayRange.max[0] };
+		std::array<double,2> vel_x_range = { this->Internals->VelocityArrayRange.min[0], this->Internals->VelocityArrayRange.max[0] };
+    std::array<double,2> vel_y_range = { this->Internals->VelocityArrayRange.min[1], this->Internals->VelocityArrayRange.max[1] };
+    std::array<double,2> vel_z_range = { this->Internals->VelocityArrayRange.min[2], this->Internals->VelocityArrayRange.max[2] };
+    metadata->ArrayRange.push_back(pr_range); 
+    metadata->ArrayRange.push_back(vel_x_range); 
+    metadata->ArrayRange.push_back(vel_y_range); 
+    metadata->ArrayRange.push_back(vel_z_range); 
 	}
 	sensei::Profiler::EndEvent("nek::DataAdaptor::GetMeshMetadata");
   return 0;
@@ -556,6 +591,28 @@ int DataAdaptor::AddArray(vtkDataObject* mesh, const std::string &meshName,
 		da->SetName("pressure");
 		da->SetArray(this->Internals->BlockData->pressure, this->Internals->BlockData->vel_size, 1);	
 	}
+  else if( arrayName == "velocity_x" ) 
+	{
+		dsa = blk->GetAttributes(vtkDataObject::POINT);
+		da = vtkDoubleArray::New();
+		da->SetName("velocity_x");
+		da->SetArray(this->Internals->BlockData->velocity_x, this->Internals->BlockData->vel_size, 1);	
+	}
+  else if( arrayName == "velocity_y" ) 
+	{
+		dsa = blk->GetAttributes(vtkDataObject::POINT);
+		da = vtkDoubleArray::New();
+		da->SetName("velocity_y");
+		da->SetArray(this->Internals->BlockData->velocity_y, this->Internals->BlockData->vel_size, 1);	
+	}
+  else if( arrayName == "velocity_z" ) 
+	{
+		dsa = blk->GetAttributes(vtkDataObject::POINT);
+		da = vtkDoubleArray::New();
+		da->SetName("velocity_z");
+		da->SetArray(this->Internals->BlockData->velocity_z, this->Internals->BlockData->vel_size, 1);	
+	}
+
 	
 	if (dsa && da) {
 		dsa->AddArray(da);

@@ -19,7 +19,8 @@ public:
   void Initialize(int index, int x_dim, int y_dim, int z_dim, int elems,
       double* mesh_x, double* mesh_y, double* mesh_z,
       double* x_min, double* x_max, double* y_min, double* y_max, double* z_min, double* z_max,
-      double* vel_x, double* vel_y, double* vel_z, double* pressure, int vel_size);
+      double* vel_x_min, double* vel_x_max, double* vel_y_min, double* vel_y_max, double* vel_z_min, double* vel_z_max,
+      double* pr_min, double* pr_max, double* vel_x, double* vel_y, double* vel_z, double* pressure, int vel_size);
 
   /// Set the extents for local blocks.
   void SetBlockExtent(int xmin, int xmax, int ymin,
@@ -33,8 +34,12 @@ public:
       double ymax, double zmin, double zmax);
 	
 	void SetDomainBounds(double xmin, double xmax, double ymin,
-   double ymax, double zmin, double zmax);
+     double ymax, double zmin, double zmax);
 
+  void SetVelocityArrayRange(double xmin, double xmax, double ymin,
+      double ymax, double zmin, double zmax);
+
+  void SetPressureArrayRange(double min, double max);
 
   /// Finalize the data adaptor.
   void Finalize();

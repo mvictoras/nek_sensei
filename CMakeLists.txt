@@ -26,6 +26,6 @@ target_link_libraries(neksensei ${libs})
 
 
 set(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR})
-set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Release)
 install(TARGETS neksensei DESTINATION lib)
 install(FILES Bridge.h DESTINATION include)
