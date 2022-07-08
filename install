@@ -11,6 +11,9 @@ if [ ! -d "build" ]; then
 fi
 
 cd build
+# XXX - Hardcoded
 cmake -DSENSEI_DIR=$1/lib/cmake/ \
+  -DTBB_LIBRARY_DEBUG=/lus/grand/projects/visualization/mvictoras/argo/install/ospray/v2.4.0-glm-fix/tbb/lib/intel64/gcc4.8/libtbb_debug.so \
+  -DTBB_LIBRARY_RELEASE=/lus/grand/projects/visualization/mvictoras/argo/install/ospray/v2.4.0-glm-fix/tbb/lib/intel64/gcc4.8/libtbb.so \
   ..
 make install

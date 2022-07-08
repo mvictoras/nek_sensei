@@ -3,6 +3,8 @@
 
 #include <DataAdaptor.h>
 
+#include <sdiy/master.hpp>
+
 namespace nek_sensei
 {
 
@@ -17,10 +19,14 @@ public:
   /// This initializes the data adaptor. This must be called once per simulation run.
   /// @param nblocks is the total number of blocks in the simulation run.
   void Initialize(int index, int x_dim, int y_dim, int z_dim, int elems,
-      double* mesh_x, double* mesh_y, double* mesh_z,
-      double* x_min, double* x_max, double* y_min, double* y_max, double* z_min, double* z_max,
-      double* vel_x_min, double* vel_x_max, double* vel_y_min, double* vel_y_max, double* vel_z_min, double* vel_z_max,
-      double* pr_min, double* pr_max, double* vel_x, double* vel_y, double* vel_z, double* pressure, int vel_size);
+              double* mesh_x, double* mesh_y, double* mesh_z,
+              double* vel_x, double* vel_y, double* vel_z, 
+              double* vort_x, double* vort_y, double* vort_z,
+              double* pressure, double *temp, double *jacobian,
+              double *x_min, double* x_max, double* y_min, double* y_max, double* z_min, double* z_max,
+              double* vel_x_min, double* vel_x_max, double* vel_y_min, double* vel_y_max, double* vel_z_min, double* vel_z_max,
+              double* vort_x_min, double* vort_x_max, double* vort_y_min, double* vort_y_max, double* vort_z_min, double* vort_z_max,
+              double* pr_min, double* pr_max, double* temp_min, double* temp_max, double* jac_min, double* jac_max, int vel_size);
 
   /// Set the extents for local blocks.
   void SetBlockExtent(int xmin, int xmax, int ymin,
@@ -36,10 +42,10 @@ public:
 	void SetDomainBounds(double xmin, double xmax, double ymin,
      double ymax, double zmin, double zmax);
 
-  void SetVelocityArrayRange(double xmin, double xmax, double ymin,
+  void SetArrayRange(sdiy::DiscreteBounds &bounds, double xmin, double xmax, double ymin,
       double ymax, double zmin, double zmax);
 
-  void SetPressureArrayRange(double min, double max);
+  void SetArrayRange(sdiy::DiscreteBounds &bounds, double min, double max);
 
   /// Finalize the data adaptor.
   void Finalize();
