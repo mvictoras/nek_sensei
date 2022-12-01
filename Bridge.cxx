@@ -2,16 +2,16 @@
 #include "DataAdaptor.h"
 
 #include <ConfigurableAnalysis.h>
-#include <vtkNew.h>
-#include <vtkDataObject.h>
-#include <vtkDoubleArray.h>
-#include <vtkSOADataArrayTemplate.h>
+#include <svtkNew.h>
+#include <svtkDataObject.h>
+#include <svtkDoubleArray.h>
+#include <svtkSOADataArrayTemplate.h>
 #include <Profiler.h>
 
 namespace BridgeInternals
 {
-  static vtkSmartPointer<nek_sensei::DataAdaptor> GlobalDataAdaptor;
-  static vtkSmartPointer<sensei::ConfigurableAnalysis> GlobalAnalysisAdaptor;
+  static svtkSmartPointer<nek_sensei::DataAdaptor> GlobalDataAdaptor;
+  static svtkSmartPointer<sensei::ConfigurableAnalysis> GlobalAnalysisAdaptor;
 }
 
 //-----------------------------------------------------------------------------
@@ -29,7 +29,7 @@ void sensei_bridge_initialize(MPI_Comm* comm, char* casename, int* elems,
   sensei::Profiler::Initialize();
   sensei::Profiler::StartEvent("nek::sensei_bridge::initialize");
   int arrayLen = (*vx_dim) * (*vy_dim) * (*vz_dim) * (*elems);
-  BridgeInternals::GlobalDataAdaptor = vtkSmartPointer<nek_sensei::DataAdaptor>::New();
+  BridgeInternals::GlobalDataAdaptor = svtkSmartPointer<nek_sensei::DataAdaptor>::New();
   BridgeInternals::GlobalDataAdaptor->SetCommunicator(*comm);
   BridgeInternals::GlobalDataAdaptor->Initialize(0,
         *vx_dim, *vy_dim, *vz_dim, *elems, vmesh_x, vmesh_y, vmesh_z, 
@@ -53,20 +53,21 @@ void sensei_bridge_initialize(MPI_Comm* comm, char* casename, int* elems,
 
   }
 
-  BridgeInternals::GlobalAnalysisAdaptor = vtkSmartPointer<sensei::ConfigurableAnalysis>::New();
+  BridgeInternals::GlobalAnalysisAdaptor = svtkSmartPointer<sensei::ConfigurableAnalysis>::New();
   BridgeInternals::GlobalAnalysisAdaptor->SetCommunicator(*comm);
   std::string caseStr = casename;
   BridgeInternals::GlobalAnalysisAdaptor->Initialize(caseStr + ".xml");
+  
   sensei::Profiler::EndEvent("nek::sensei_bridge::initialize");
 }
 
 //-----------------------------------------------------------------------------
-void sensei_bridge_update(int* tstep, double* time)
+void sensei_bridge_update(int* tstep, double* time, sensei::DataAdaptor **dataOut)
 {
   sensei::Profiler::StartEvent("nek::sensei_bridge::update");
   BridgeInternals::GlobalDataAdaptor->SetDataTime(*time);
   BridgeInternals::GlobalDataAdaptor->SetDataTimeStep(*tstep);
-  BridgeInternals::GlobalAnalysisAdaptor->Execute(BridgeInternals::GlobalDataAdaptor);
+  BridgeInternals::GlobalAnalysisAdaptor->Execute(BridgeInternals::GlobalDataAdaptor.GetPointer(), dataOut);
   BridgeInternals::GlobalDataAdaptor->ReleaseData();
   sensei::Profiler::EndEvent("nek::sensei_bridge::update");
 }

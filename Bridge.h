@@ -3,6 +3,8 @@
 
 #include <mpi.h>
 
+namespace sensei { class DataAdaptor; }
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -32,7 +34,7 @@ void sensei_bridge_initialize(MPI_Comm* comm, char* casename, int* elems,
       double* vort_x_min, double* vort_x_max, double* vort_y_min, double* vort_y_max, double* vort_z_min, double* vort_z_max,
       double* pr_min, double* pr_max, double* temp_min, double* temp_max, double* jac_min, double* jac_max);
 
-void sensei_bridge_update(int* tstep, double* time);
+void sensei_bridge_update(int* tstep, double* time, sensei::DataAdaptor **dataOut);
 void sensei_bridge_finalize();
 
 #ifdef __cplusplus

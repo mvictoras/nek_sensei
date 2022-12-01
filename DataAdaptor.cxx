@@ -1,16 +1,16 @@
 #include "DataAdaptor.h"
 #include "MeshMetadata.h"
 #include "MPIUtils.h"
-#include "VTKUtils.h"
 #include "Error.h"
 
-#include <vtkObjectFactory.h>
-#include <vtkDoubleArray.h>
-#include <vtkPointData.h>
-#include <vtkCellArray.h>
-#include <vtkSOADataArrayTemplate.h>
-#include <vtkMultiBlockDataSet.h>
-#include <vtkUnstructuredGrid.h>
+#include <svtkObjectFactory.h>
+#include <svtkDoubleArray.h>
+#include <svtkPointData.h>
+#include <svtkCellArray.h>
+#include <svtkSOADataArrayTemplate.h>
+#include <svtkMultiBlockDataSet.h>
+#include <svtkUnsignedCharArray.h>
+#include <svtkUnstructuredGrid.h>
 
 #include <cassert>
 #include <algorithm>
@@ -80,25 +80,25 @@ std::array<double,2> getArrayRange(unsigned long nSize, double* data, std::array
 }
 
 static
-vtkUnstructuredGrid *newUnstructuredBlock(Block *block, bool structureOnly) 
+svtkUnstructuredGrid *newUnstructuredBlock(Block *block, bool structureOnly) 
 {
-  vtkUnstructuredGrid *ug = vtkUnstructuredGrid::New();
+  svtkUnstructuredGrid *ug = svtkUnstructuredGrid::New();
   if(!structureOnly) 
   {
     int arrayLen = block->dim[0] * block->dim[1] * block->dim[2] * block->size;
-    sensei::Profiler::StartEvent("nek::DataAdaptor::newUnstructuredBlock::vtkSOAArrayTemplate");
+    sensei::Profiler::StartEvent("nek::DataAdaptor::newUnstructuredBlock::svtkSOAArrayTemplate");
 
-    vtkSOADataArrayTemplate<double> *pointsData = vtkSOADataArrayTemplate<double>::New();
+    svtkSOADataArrayTemplate<double> *pointsData = svtkSOADataArrayTemplate<double>::New();
     pointsData->SetNumberOfComponents(3);
     pointsData->SetArray(0, block->mesh[0], arrayLen,  true, true);
     pointsData->SetArray(1, block->mesh[1], arrayLen, false, true);
     pointsData->SetArray(2, block->mesh[2], arrayLen, false, true);
     
-    vtkPoints *points = vtkPoints::New();
+    svtkPoints *points = svtkPoints::New();
     points->SetDataTypeToDouble();
     points->SetNumberOfPoints(arrayLen * 3);
     points->SetData(pointsData);
-    sensei::Profiler::EndEvent("nek::DataAdaptor::newUnstructuredBlock::vtkSOAArrayTemplate");
+    sensei::Profiler::EndEvent("nek::DataAdaptor::newUnstructuredBlock::svtkSOAArrayTemplate");
 
     ug->SetPoints(points);
     points->Delete();
@@ -109,27 +109,27 @@ vtkUnstructuredGrid *newUnstructuredBlock(Block *block, bool structureOnly)
     int y_len = block->dim[2]-1;
     if(block->dim[2] == 1)
     {
-      vtkIdType ncells = x_len*y_len*block->size;
+      svtkIdType ncells = x_len*y_len*block->size;
       
-      vtkIdTypeArray *nlist = vtkIdTypeArray::New();
+      svtkIdTypeArray *nlist = svtkIdTypeArray::New();
       nlist->SetNumberOfValues(ncells * 4);
 
-      vtkUnsignedCharArray *cellTypes = vtkUnsignedCharArray::New();
+      svtkUnsignedCharArray *cellTypes = svtkUnsignedCharArray::New();
       cellTypes->SetNumberOfValues(ncells);
 
-      vtkIdTypeArray *cellLocations = vtkIdTypeArray::New();
+      svtkIdTypeArray *cellLocations = svtkIdTypeArray::New();
       cellLocations->SetNumberOfValues(ncells + 1);
 
-      vtkIdType *nl = nlist->GetPointer(0);
+      svtkIdType *nl = nlist->GetPointer(0);
       unsigned char *ct = cellTypes->GetPointer(0);
-      vtkIdType *cl = cellLocations->GetPointer(0);
+      svtkIdType *cl = cellLocations->GetPointer(0);
       int offset = 0;
       for(int elem=0; elem<block->size; ++elem)
         for(int y=0; y < y_len; ++y)
             for(int x=0; x < x_len; ++x)
           {
            
-            *ct++ = VTK_QUAD;
+            *ct++ = SVTK_QUAD;
 
             *cl++ = offset;
             offset += 4;
@@ -144,7 +144,7 @@ vtkUnstructuredGrid *newUnstructuredBlock(Block *block, bool structureOnly)
 
       *cl = offset;
 
-      vtkCellArray *cells = vtkCellArray::New();
+      svtkCellArray *cells = svtkCellArray::New();
       cells->SetData(cellLocations, nlist);
 
       ug->SetCells(cellTypes, cells);
@@ -159,20 +159,20 @@ vtkUnstructuredGrid *newUnstructuredBlock(Block *block, bool structureOnly)
       // 3D mesh using hexahedrons
       int z_len = block->dim[2]-1;
 
-      vtkIdType ncells = x_len*y_len*z_len*block->size;
+      svtkIdType ncells = x_len*y_len*z_len*block->size;
 
-      vtkIdTypeArray *nlist = vtkIdTypeArray::New();
+      svtkIdTypeArray *nlist = svtkIdTypeArray::New();
       nlist->SetNumberOfValues(ncells * 8);
 
-      vtkUnsignedCharArray *cellTypes = vtkUnsignedCharArray::New();
+      svtkUnsignedCharArray *cellTypes = svtkUnsignedCharArray::New();
       cellTypes->SetNumberOfValues(ncells);
 
-      vtkIdTypeArray *cellLocations = vtkIdTypeArray::New();
+      svtkIdTypeArray *cellLocations = svtkIdTypeArray::New();
       cellLocations->SetNumberOfValues(ncells + 1);
 
-      vtkIdType *nl = nlist->GetPointer(0);
+      svtkIdType *nl = nlist->GetPointer(0);
       unsigned char *ct = cellTypes->GetPointer(0);
-      vtkIdType *cl = cellLocations->GetPointer(0);
+      svtkIdType *cl = cellLocations->GetPointer(0);
       int offset = 0;
       for(int elem=0; elem<block->size; ++elem)
         for(int z=0; z < z_len; ++z)
@@ -180,7 +180,7 @@ vtkUnstructuredGrid *newUnstructuredBlock(Block *block, bool structureOnly)
             for(int x=0; x < x_len; ++x)
             {
 
-              *ct++ = VTK_HEXAHEDRON;
+              *ct++ = SVTK_HEXAHEDRON;
 
               *cl++ = offset;
               offset += 8;
@@ -198,7 +198,7 @@ vtkUnstructuredGrid *newUnstructuredBlock(Block *block, bool structureOnly)
             }
       *cl = offset;
       
-      vtkCellArray *cells = vtkCellArray::New();
+      svtkCellArray *cells = svtkCellArray::New();
       cells->SetData(cellLocations, nlist);
 
       ug->SetCells(cellTypes, cells);
@@ -292,7 +292,7 @@ void DataAdaptor::Initialize(int index, int x_dim, int y_dim, int z_dim, int ele
 {
 
 	int nRanks = 1;
-
+  int i =0 ;
   MPI_Comm_size(this->GetCommunicator(), &nRanks);
 
   this->Internals->NumBlocks = nRanks;
@@ -327,7 +327,7 @@ void DataAdaptor::Initialize(int index, int x_dim, int y_dim, int z_dim, int ele
       *vel_y_min, *vel_y_max,
       *vel_z_min, *vel_z_max
       );
-    
+   
   this->SetArrayRange(
       this->Internals->VorticityArrayRange,
       *vel_x_min, *vel_x_max,
@@ -440,7 +440,6 @@ int DataAdaptor::GetNumberOfMeshes(unsigned int &numMeshes){
 //-----------------------------------------------------------------------------
 int DataAdaptor::GetMeshMetadata(unsigned int id, sensei::MeshMetadataPtr &metadata) 
 {
-
   sensei::Profiler::StartEvent("nek::DataAdaptor::GetMeshMetadata");
 	if (id > 2)
 	{
@@ -460,17 +459,17 @@ int DataAdaptor::GetMeshMetadata(unsigned int id, sensei::MeshMetadataPtr &metad
 
   /// There are 1 local blocks per rank
 	int nBlocks = 1;
-  metadata->MeshType = VTK_MULTIBLOCK_DATA_SET;
-  metadata->BlockType = VTK_UNSTRUCTURED_GRID;
-  metadata->CoordinateType = VTK_DOUBLE;
+  metadata->MeshType = SVTK_MULTIBLOCK_DATA_SET;
+  metadata->BlockType = SVTK_UNSTRUCTURED_GRID;
+  metadata->CoordinateType = SVTK_DOUBLE;
   metadata->NumBlocks = this->Internals->NumBlocks;
   metadata->NumBlocksLocal = {nBlocks};
   metadata->NumGhostCells = this->Internals->NumGhostCells;
   metadata->NumArrays = 9;
   metadata->ArrayName = {"velocity_x", "velocity_y", "velocity_z", "vorticity_x", "vorticity_y", "vorticity_z", "pressure", "temperature", "jacobian"};
-  metadata->ArrayCentering = {vtkDataObject::POINT, vtkDataObject::POINT, vtkDataObject::POINT, vtkDataObject::POINT, vtkDataObject::POINT, vtkDataObject::POINT, vtkDataObject::POINT, vtkDataObject::POINT, vtkDataObject::POINT};
+  metadata->ArrayCentering = {svtkDataObject::POINT, svtkDataObject::POINT, svtkDataObject::POINT, svtkDataObject::POINT, svtkDataObject::POINT, svtkDataObject::POINT, svtkDataObject::POINT, svtkDataObject::POINT, svtkDataObject::POINT};
   metadata->ArrayComponents = {1, 1, 1, 1, 1, 1, 1, 1, 1};
-  metadata->ArrayType = {VTK_DOUBLE, VTK_DOUBLE, VTK_DOUBLE, VTK_DOUBLE, VTK_DOUBLE, VTK_DOUBLE, VTK_DOUBLE, VTK_DOUBLE, VTK_DOUBLE};
+  metadata->ArrayType = {SVTK_DOUBLE, SVTK_DOUBLE, SVTK_DOUBLE, SVTK_DOUBLE, SVTK_DOUBLE, SVTK_DOUBLE, SVTK_DOUBLE, SVTK_DOUBLE, SVTK_DOUBLE};
   metadata->StaticMesh = 0;
  
   if (metadata->Flags.BlockExtentsSet()) 
@@ -556,10 +555,10 @@ int DataAdaptor::GetMeshMetadata(unsigned int id, sensei::MeshMetadataPtr &metad
 
 //-----------------------------------------------------------------------------
 int DataAdaptor::GetMesh(const std::string &meshName, bool structureOnly,
-	vtkDataObject *&mesh)
+	svtkDataObject *&mesh)
 {
-  sensei::Profiler::StartEvent("nek::DataAdaptor::GetMesh");
 
+  sensei::Profiler::StartEvent("nek::DataAdaptor::GetMesh");
 	mesh = nullptr;
 
   if ((meshName != "mesh") && (meshName != "pmesh") && (meshName != "vmesh"))
@@ -572,10 +571,10 @@ int DataAdaptor::GetMesh(const std::string &meshName, bool structureOnly,
 
   MPI_Comm_rank(this->GetCommunicator(), &rank);
 
-	vtkMultiBlockDataSet *mb = vtkMultiBlockDataSet::New();
+	svtkMultiBlockDataSet *mb = svtkMultiBlockDataSet::New();
   mb->SetNumberOfBlocks(this->Internals->NumBlocks);
 
-  vtkUnstructuredGrid *ug = newUnstructuredBlock(this->Internals->BlockData, structureOnly);
+  svtkUnstructuredGrid *ug = newUnstructuredBlock(this->Internals->BlockData, structureOnly);
   mb->SetBlock(rank, ug);
   ug->Delete();
 
@@ -585,12 +584,11 @@ int DataAdaptor::GetMesh(const std::string &meshName, bool structureOnly,
 }
 
 //-----------------------------------------------------------------------------
-int DataAdaptor::AddArray(vtkDataObject* mesh, const std::string &meshName,
+int DataAdaptor::AddArray(svtkDataObject* mesh, const std::string &meshName,
       int association, const std::string& arrayName)
 {
   sensei::Profiler::StartEvent("nek::DataAdaptor::AddArray");
-
-	vtkMultiBlockDataSet *mb = dynamic_cast<vtkMultiBlockDataSet*>(mesh);
+	svtkMultiBlockDataSet *mb = dynamic_cast<svtkMultiBlockDataSet*>(mesh);
   if (!mb)
 	{
 		SENSEI_ERROR("unexpected mesh type "
@@ -602,80 +600,80 @@ int DataAdaptor::AddArray(vtkDataObject* mesh, const std::string &meshName,
 
   MPI_Comm_rank(this->GetCommunicator(), &rank);
 
-	vtkDataObject *blk = mb->GetBlock(rank);
+	svtkDataObject *blk = mb->GetBlock(rank);
 	if (!blk)
 	{
 		SENSEI_ERROR("encountered empty block at index " << rank)
 		return -1;
 	}
        
-	vtkDoubleArray *da = nullptr;
-	vtkDataSetAttributes *dsa = nullptr;
+	svtkDoubleArray *da = nullptr;
+	svtkDataSetAttributes *dsa = nullptr;
 
-	if( arrayName == "velocity_x" ) 
+	if( arrayName == "velocity_x" && this->Internals->BlockData->velocity_x != nullptr ) 
 	{
-		dsa = blk->GetAttributes(vtkDataObject::POINT);
-		da = vtkDoubleArray::New();
+		dsa = blk->GetAttributes(svtkDataObject::POINT);
+		da = svtkDoubleArray::New();
 		da->SetName("velocity_x");
 		da->SetArray(this->Internals->BlockData->velocity_x, this->Internals->BlockData->vel_size, 1);	
 	}
-  else if( arrayName == "velocity_y" ) 
+  else if( arrayName == "velocity_y" && this->Internals->BlockData->velocity_y != nullptr ) 
 	{
-		dsa = blk->GetAttributes(vtkDataObject::POINT);
-		da = vtkDoubleArray::New();
+		dsa = blk->GetAttributes(svtkDataObject::POINT);
+		da = svtkDoubleArray::New();
 		da->SetName("velocity_y");
 		da->SetArray(this->Internals->BlockData->velocity_y, this->Internals->BlockData->vel_size, 1);	
 	}
-  else if( arrayName == "velocity_z" ) 
+  else if( arrayName == "velocity_z" && this->Internals->BlockData->velocity_z != nullptr ) 
 	{
-		dsa = blk->GetAttributes(vtkDataObject::POINT);
-		da = vtkDoubleArray::New();
+		dsa = blk->GetAttributes(svtkDataObject::POINT);
+		da = svtkDoubleArray::New();
 		da->SetName("velocity_z");
 		da->SetArray(this->Internals->BlockData->velocity_z, this->Internals->BlockData->vel_size, 1);	
 	}
-  else if( arrayName == "vorticity_x" ) 
+  else if( arrayName == "vorticity_x" && this->Internals->BlockData->vorticity_x != nullptr ) 
 	{
-		dsa = blk->GetAttributes(vtkDataObject::POINT);
-		da = vtkDoubleArray::New();
+		dsa = blk->GetAttributes(svtkDataObject::POINT);
+		da = svtkDoubleArray::New();
 		da->SetName("vorticity_x");
 		da->SetArray(this->Internals->BlockData->vorticity_x, this->Internals->BlockData->vel_size, 1);	
 	}
-  else if( arrayName == "vorticity_y" ) 
+  else if( arrayName == "vorticity_y" && this->Internals->BlockData->vorticity_y != nullptr ) 
 	{
-		dsa = blk->GetAttributes(vtkDataObject::POINT);
-		da = vtkDoubleArray::New();
+		dsa = blk->GetAttributes(svtkDataObject::POINT);
+		da = svtkDoubleArray::New();
 		da->SetName("vorticity_y");
 		da->SetArray(this->Internals->BlockData->vorticity_y, this->Internals->BlockData->vel_size, 1);	
 	}
-  else if( arrayName == "vorticity_z" ) 
+  else if( arrayName == "vorticity_z" && this->Internals->BlockData->vorticity_z != nullptr ) 
 	{
-		dsa = blk->GetAttributes(vtkDataObject::POINT);
-		da = vtkDoubleArray::New();
+		dsa = blk->GetAttributes(svtkDataObject::POINT);
+		da = svtkDoubleArray::New();
 		da->SetName("vorticity_z");
 		da->SetArray(this->Internals->BlockData->vorticity_z, this->Internals->BlockData->vel_size, 1);	
 	}
-  else if( arrayName == "pressure" ) 
+  else if( arrayName == "pressure" && this->Internals->BlockData->pressure != nullptr ) 
 	{
-		dsa = blk->GetAttributes(vtkDataObject::POINT);
-		da = vtkDoubleArray::New();
+		dsa = blk->GetAttributes(svtkDataObject::POINT);
+		da = svtkDoubleArray::New();
 		da->SetName("pressure");
 		da->SetArray(this->Internals->BlockData->pressure, this->Internals->BlockData->vel_size, 1);	
 	}
-  else if( arrayName == "temperature" ) 
+  else if( arrayName == "temperature" && this->Internals->BlockData->temperature != nullptr ) 
 	{
-		dsa = blk->GetAttributes(vtkDataObject::POINT);
-		da = vtkDoubleArray::New();
+		dsa = blk->GetAttributes(svtkDataObject::POINT);
+		da = svtkDoubleArray::New();
 		da->SetName("temperature");
 		da->SetArray(this->Internals->BlockData->temperature, this->Internals->BlockData->vel_size, 1);	
-	} 
-  else if( arrayName == "jacobian" ) 
+	} /*
+  else if( arrayName == "jacobian" && this->Internals->BlockData->velocity_y != nullptr ) 
 	{
-		dsa = blk->GetAttributes(vtkDataObject::POINT);
-		da = vtkDoubleArray::New();
-		da->SetName("jacobian");
-		da->SetArray(this->Internals->BlockData->pressure, this->Internals->BlockData->vel_size, 1);	
+		//dsa = blk->GetAttributes(svtkDataObject::POINT);
+		//da = svtkDoubleArray::New();
+		//da->SetName("jacobian");
+		//da->SetArray(this->Internals->BlockData->pressure, this->Internals->BlockData->vel_size, 1);	
 	}
-
+  */
 	if (dsa && da) {
 		dsa->AddArray(da);
 		da->Delete();
